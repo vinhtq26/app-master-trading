@@ -15,4 +15,3 @@ uvicorn
 apscheduler
 discord
 nest_asyncio
-urllib3<2.0
