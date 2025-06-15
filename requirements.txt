@@ -9,10 +9,10 @@ python-binance==1.0.17
 python-dotenv==1.0.0
 requests==2.32.0
 ta==0.10.2
-urllib3==2.2.2
 websockets==11.0.3
 fastapi
 uvicorn
 apscheduler
 discord
 nest_asyncio
+urllib3<2.0
