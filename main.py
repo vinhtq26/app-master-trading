@@ -87,6 +87,11 @@ async def classify_intent(message: str) -> str:
     return result.strip()
 
 
+@app.get("/")  # Thêm endpoint GET mặc định để test
+async def root():
+    return {"message": "Hello World"}
+
+
 # WebSocket endpoint
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -351,14 +356,13 @@ Câu hỏi của người dùng:
 "{message}"
 
 ---
-Hãy trả về danh sách các coin (ký hiệu) liên quan đến câu hỏi, coin trong danh sách có thêm ký hiệu USDT ở cuối, dưới dạng JSON list.  
+Hãy trả về danh sách các coin (ký hiệu) liên quan đến câu hỏi, coin trong danh sách có thêm ký hiệu USDT ở cuối, dưới dạng JSON list. 
+* Ví dụ: hỏi coin BTC thì hiểu là BTCUSDT, ETH thì hiểu là ETHUSDT, T thì hiểu là TUSDT, v.v.
 Nếu không có coin nào được nhắc tới, trả về mảng rỗng [].  
 
 Chỉ trả về JSON, ví dụ:  
-["BTCUSDT", "ETHUSDT"]  
-hoặc  
-[]
-        """
+["BTCUSDT", "ETHUSDT"]  hoặc [] và không giải thích gì thêm. 
+"""
     )
     # clean_coin_list = [coin.replace("USDT", "") for coin in coinlist]
     chain = LLMChain(llm=llm, prompt=prompt_template)

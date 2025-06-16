@@ -30,7 +30,7 @@ def analyze_short_signal(data, interval):
         )
         if cond1 and cond2:
             ranking_short = 10
-            reason = "EMA10 < EMA20 & EMA50, but in last 5 candles EMA10 > EMA20 or EMA50"
+            reason = "EMA10 < EMA20 | EMA50, but in last 5 candles EMA10 > EMA20 or EMA50"
         # MACD just crossed below signal (not more than 3rd negative candle) and histogram negative
         macd_cross = False
         for i in range(1, 4):
@@ -42,22 +42,37 @@ def analyze_short_signal(data, interval):
             ranking_short = 10
             reason = "MACD just crossed below signal and histogram negative (within last 3 candles)"
 
+    # ema 10 nhỏ hơn ema 20 macd nhỏ hơn signal và histogram âm
     elif interval == '15m':
-        cond1 = (df.iloc[-1]['EMA_10'] < df.iloc[-1]['EMA_20']) and (df.iloc[-1]['EMA_10'] < df.iloc[-1]['EMA_50']) \
-            and (df.iloc[-1]['RSI_30'] < df.iloc[-1]['RSI_50']) and (df.iloc[-1]['RSI_30'] < df.iloc[-1]['RSI_70']) \
-            and (df.iloc[-1]['MACD'] < df.iloc[-1]['Signal']) and (df.iloc[-1]['Histogram'] < 0)
+        cond0 = ((df.iloc[-1]['EMA_10'] < df.iloc[-1]['EMA_20']) and (df.iloc[-1]['EMA_10'] < df.iloc[-1]['EMA_50'])) \
+                and ((df.iloc[-1]['RSI_30'] < df.iloc[-1]['RSI_50']) or (df.iloc[-1]['RSI_30'] < df.iloc[-1]['RSI_70'])) \
+                and ((df.iloc[-1]['MACD'] < df.iloc[-1]['Signal']) and (df.iloc[-1]['Histogram'] < 0))
+        cond1 = ( (df.iloc[-1]['EMA_10'] < df.iloc[-1]['EMA_20']) or (df.iloc[-1]['EMA_10'] < df.iloc[-1]['EMA_50']) ) \
+            and ((df.iloc[-1]['RSI_30'] < df.iloc[-1]['RSI_50']) or (df.iloc[-1]['RSI_30'] < df.iloc[-1]['RSI_70']) ) \
+            and ((df.iloc[-1]['MACD'] < df.iloc[-1]['Signal']) and (df.iloc[-1]['Histogram'] < 0) )
         cond1b = any(df.iloc[-i]['EMA_10'] > df.iloc[-i]['EMA_20'] for i in range(2, 7))
-        if cond1 and cond1b:
-            ranking_short = 10
-            reason = "EMA10 < EMA20 & EMA50, RSI30 < RSI50 & RSI70, MACD < Signal, Histogram < 0, and EMA10 > EMA20 in last 5"
-        if cond1:
+        if cond1b and cond0:
+            if(
+                df.iloc[-2]['Histogram'] > 0 > df.iloc[-3]['Histogram'] and
+                df.iloc[-4]['Histogram'] < 0 and
+                df.iloc[-5]['Histogram'] < 0
+            ):
+                ranking_short = 10
+                reason = "Histogram: 2nd last positive, 3rd/4th/5th last negative (5th is the 3rd negative)"
+            else:
+                ranking_short = 9
+                reason = "EMA10 < EMA20 | EMA50, RSI30 < RSI50 | RSI70, MACD < Signal, but EMA10 > EMA20 in last 5"
+        elif cond1 and cond1b:
+            ranking_short = 9
+            reason = "EMA10 < EMA20 | EMA50, RSI30 < RSI50 | RSI70, MACD < Signal, Histogram < 0"
+        elif cond1:
             hist = [df.iloc[-i]['Histogram'] for i in range(2, 7)]
             if all(h < 0 for h in hist) and all(hist[i] < hist[i + 1] or abs(hist[i + 1] - hist[i]) <= abs(hist[i]) * 0.01 for i in range(len(hist) - 1)):
                 ranking_short = 8
                 reason = "Histogram negative and increasing (closer to 0) in last 5 candles"
             else:
                 ranking_short = 9
-                reason = "EMA10 < EMA20 & EMA50, RSI30 < RSI50 & RSI70, MACD < Signal, Histogram < 0. careful if chain of histogram is negative greater"
+                reason = "EMA10 < EMA20 | EMA50, RSI30 < RSI50 | RSI70, MACD < Signal, Histogram < 0. careful if chain of histogram is negative greater"
 
     elif interval == '4h':
         cond1 = (df.iloc[-1]['RSI_30'] < df.iloc[-1]['RSI_50']) and (df.iloc[-1]['RSI_30'] < df.iloc[-1]['RSI_70']) \
