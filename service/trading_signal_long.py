@@ -4,6 +4,7 @@ from binance.client import Client
 import pandas as pd
 from ta.momentum import RSIIndicator
 from ta.trend import EMAIndicator
+import logging
 
 from service.binance.BinanceTradingSignals import analyze_buy_signal
 
@@ -107,5 +108,4 @@ def get_coin_technical_data(coin_symbol='BTCUSDT', interval=Client.KLINE_INTERVA
 if __name__ == "__main__": # Khởi tạo client Binance
 
     technical_data = get_coin_technical_data()
-    print(analyze_buy_signal(technical_data))
-
+    logging.info(analyze_buy_signal(technical_data))

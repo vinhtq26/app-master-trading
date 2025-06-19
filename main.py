@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -80,6 +81,9 @@ Intent:
 # LangChain pipeline
 intent_chain = LLMChain(llm=llm, prompt=prompt)
 
+# Cấu hình logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 # Hàm phân loại intent
 async def classify_intent(message: str) -> str:
@@ -122,7 +126,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_json(response)
                 continue
             elif intent == "long_signal":
-                print(f"Long signal intent detected with time: {time_info}")
+                logging.info(f"Long signal intent detected with time: {time_info}")
                 result = await trading_long_signal_position(interval=time_info)
                 signals = result.get("buy_signals", [])
                 if (signals is None or len(signals) == 0):
@@ -139,14 +143,14 @@ async def websocket_endpoint(websocket: WebSocket):
                 signals_input = json.dumps(signals, ensure_ascii=False)
 
                 summary = await summarize_chain.arun(signals=signals_input)
-                print("summary: ", summary)
+                logging.info(f"summary: {summary}")
                 response = {
                     "type": "Long",
                     "message": summary.strip()
                 }
 
             elif intent == "long_detail_signal":
-                print(f"long signal intent detected with time: {time_info}")
+                logging.info(f"long signal intent detected with time: {time_info}")
 
                 if not coins:
                     response = {
@@ -171,14 +175,14 @@ async def websocket_endpoint(websocket: WebSocket):
                 signals_input = json.dumps(signals, ensure_ascii=False)
 
                 summary = await summarize_chain.arun(signals=signals_input)
-                print("summary: ", summary)
+                logging.info(f"summary: {summary}")
                 response = {
                     "type": "Long",
                     "message": summary.strip()
                 }
-                print("coin detect", coins)
+                logging.info(f"coin detect {coins}")
             elif intent == "short_signal":
-                print(f"short signal intent detected with time: {time_info}")
+                logging.info(f"short signal intent detected with time: {time_info}")
                 result = await trading_short_signal_position(interval=time_info)
                 signals = result.get("short_signals", [])
                 if (signals is None or len(signals) == 0):
@@ -195,13 +199,13 @@ async def websocket_endpoint(websocket: WebSocket):
                 signals_input = json.dumps(signals, ensure_ascii=False)
 
                 summary = await summarize_chain.arun(signals=signals_input)
-                print("summary: ", summary)
+                logging.info(f"summary: {summary}")
                 response = {
                     "type": "Short",
                     "message": summary.strip()
                 }
             elif intent == "short_detail_signal":
-                print(f"short detail signal intent detected with time: {time_info}")
+                logging.info(f"short detail signal intent detected with time: {time_info}")
                 if not coins:
                     response = {
                         "type": "Other",
@@ -225,14 +229,14 @@ async def websocket_endpoint(websocket: WebSocket):
                 signals_input = json.dumps(signals, ensure_ascii=False)
 
                 summary = await summarize_chain.arun(signals=signals_input)
-                print("summary: ", summary)
+                logging.info(f"summary: {summary}")
                 response = {
                     "type": "Short",
                     "message": summary.strip()
                 }
-                print("coin detect", coins)
+                logging.info(f"coin detect {coins}")
             elif intent == "market_info":
-                print("Market info intent detected, get coin BTC and BTCDOM")
+                logging.info("Market info intent detected, get coin BTC and BTCDOM")
                 listCoins = ["BTCUSDT", "BTCDOMUSDT"]
                 resultLong15m = await trading_long_detail_signal_position(interval="15m", symbols=listCoins)
                 signalLong15m = resultLong15m.get("buy_signals", [])
@@ -296,7 +300,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     "message": "Xin lỗi, tôi không thể hỗ trợ với nội dung tiêu cực hoặc không phù hợp."
                 }
             elif intent == "funding":
-                print(f"Funding intent detected with time: {time_info} and coins: {coins}")
+                logging.info(f"Funding intent detected with time: {time_info} and coins: {coins}")
                 funding_rate = await fundingInfo.fundingRate()
                 msg = "Funding Rates:\n"
                 msg += "\nBinance:\n" + "\n".join(
@@ -325,8 +329,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 summarylong = await summarize_chain.arun(signals=signals_long_input)
                 signals_short_input = json.dumps(signalShort, ensure_ascii=False)
                 summaryShort = await summarize_chain.arun(signals=signals_short_input)
-                print("summary long: ", summarylong)
-                print("summary short: ", summaryShort)
+                logging.info(f"summary long: {summarylong}")
+                logging.info(f"summary short: {summaryShort}")
                 response = {
                     "type": "Funding",
                     "message": message + "\n\n" + msg + "\n\n" + summarylong.strip() + "\n\n" + summaryShort.strip()
@@ -339,7 +343,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 }
             await websocket.send_json(response)
     except WebSocketDisconnect:
-        print("WebSocket disconnected")
+        logging.info("WebSocket disconnected")
 
 
 async def extractCoin(message: str, coinlist: list) -> list:
