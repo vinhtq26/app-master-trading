@@ -14,7 +14,7 @@ from service.app import trading_long_signal_position, trading_short_signal_posit
     trading_long_detail_signal_position, trading_short_detail_signal_position
 from service.binance import BinanceTradingSignals
 from service.funding import fundingInfo
-
+import uvicorn
 load_dotenv()
 
 app = FastAPI()
@@ -91,7 +91,9 @@ async def classify_intent(message: str) -> str:
 async def root():
     return {"message": "Hello World"}
 
-
+@app.get("/hi")  # Thêm endpoint GET mặc định để test
+async def root():
+    return {"message": "Hello World"}
 # WebSocket endpoint
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -432,3 +434,6 @@ extract_time_chain = LLMChain(llm=llm, prompt=extract_time_prompt)
 async def extract_time(message: str) -> str:
     result = await extract_time_chain.arun(message=message)
     return result.strip()
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000)
