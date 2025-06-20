@@ -18,6 +18,11 @@ from service.funding import fundingInfo
 import uvicorn
 load_dotenv()
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s"
+)
+
 app = FastAPI()
 
 app.add_middleware(
