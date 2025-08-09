@@ -2,13 +2,14 @@ import asyncio
 import json
 import logging
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains import LLMChain
 import os
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 from constant.Constant import TIME_CONSTANT
 from service.app import trading_long_signal_position, trading_short_signal_position, \
@@ -100,9 +101,56 @@ async def classify_intent(message: str) -> str:
 async def root():
     return {"message": "Hello World"}
 
-@app.get("/hi")  # Thêm endpoint GET mặc định để test
+@app.get("/funding")  # Thêm endpoint GET mặc định để test
 async def root():
-    return {"message": "Hello World"}
+    funding_rate = await fundingInfo.fundingRate()
+    all_funding = funding_rate.get("binance", []) + funding_rate.get("mexc", []) + funding_rate.get("bybit", [])
+    # Lấy danh sách symbol cần lấy giá
+    symbols = list({item["symbol"].replace('_', '').replace('-', '') for item in all_funding if float(item["fundingRatePercent"]) <= -0.5})
+    # Gọi API lấy giá nhanh từ Binance (futures)
+    import requests
+    price_map = {}
+    try:
+        resp = requests.get("https://fapi.binance.com/fapi/v1/ticker/price")
+        if resp.ok:
+            data = resp.json()
+            price_map = {item['symbol']: float(item['price']) for item in data}
+    except Exception:
+        pass
+    filtered = []
+    for item in all_funding:
+        if float(item["fundingRatePercent"]) <= -0.5:
+            # Chuẩn hóa symbol để lấy giá
+            symbol_norm = item["symbol"].replace('_', '').replace('-', '')
+            price = price_map.get(symbol_norm)
+            filtered.append({
+                "symbol": item["symbol"],
+                "fundingRatePercent": item["fundingRatePercent"],
+                "exchange": item.get("exchange", "unknown"),
+                "image_url": item.get("image_url") or item.get("url"),
+                "price": price
+            })
+    return filtered
+
+class SignalRequest(BaseModel):
+    timeframe: str
+    exchange: str = "binance"
+    direction: str
+
+@app.post("/signal")
+async def get_signal_post(req: SignalRequest = Body(...)):
+    # Chỉ xử lý cho sàn binance
+    if req.exchange.lower() != "binance":
+        return {"error": "Chỉ hỗ trợ sàn binance ở phiên bản này."}
+    if req.direction.lower() == "long":
+        result = await trading_long_signal_position(interval=req.timeframe)
+        return result
+    elif req.direction.lower() == "short":
+        result = await trading_short_signal_position(interval=req.timeframe)
+        return result
+    else:
+        return {"error": "Direction phải là 'long' hoặc 'short'"}
+
 # WebSocket endpoint
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -326,7 +374,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 listCoins = funding_rate["allSymbols"]
                 resultLong = await trading_long_detail_signal_position(interval=time_info, symbols=listCoins)
                 signalLong = resultLong.get("buy_signals", [])
-                resultShort = await trading_short_detail_signal_position(interval=time_info, symbols=listCoins)
+                resultShort = await trading_short_signal_position(interval=time_info, symbols=listCoins)
                 signalShort = resultShort.get("short_signals", [])
                 message = "Dưới đây là thông tin về các tín hiệu long và short:\n\n"
                 summarize_chain = LLMChain(llm=llm, prompt=summarize_prompt)
@@ -351,7 +399,7 @@ async def websocket_endpoint(websocket: WebSocket):
         logging.info("WebSocket disconnected")
 
 
-async def extractCoin(message: str, coinlist: list) -> list:
+async def extractCoin(message: str, coinlist: list):
     prompt_template = PromptTemplate(
         input_variables=["message", "coin_list"],
         template="""
@@ -375,7 +423,6 @@ Chỉ trả về JSON, ví dụ:
 ["BTCUSDT", "ETHUSDT"]  hoặc [] và không giải thích gì thêm. 
 """
     )
-    # clean_coin_list = [coin.replace("USDT", "") for coin in coinlist]
     chain = LLMChain(llm=llm, prompt=prompt_template)
 
     response = chain.run(message=message, coin_list=", ".join(coinlist))
@@ -398,6 +445,7 @@ Dưới đây là danh sách các tín hiệu mua (long signal), mỗi mục ch�
 - `take_profit`: chốt lời  
 - `percent`: tỉ lệ thắng dự đoán  
 - `ranking_histogram`, `ranking_macd`, `ranking_rsi`, `ranking_ema`: điểm số các chỉ báo (thang 0-10) giúp bạn đưa ra lý do long
+- `image_url` hoặc `url`: link icon của coin
 
 ---
 Dữ liệu:  
@@ -407,6 +455,7 @@ Dữ liệu:
 Yêu cầu:
 - Với mỗi coin, trình bày theo định dạng sau:
   - Tên coin: [symbol]
+  - Icon: [image_url]
   - Thời gian: [time] (ví dụ: 15m, 1h, 4h, 1d)
   - Giá hiện tại: [current_price] USDT
   - Tỉ lệ thắng dự đoán: [percent]%

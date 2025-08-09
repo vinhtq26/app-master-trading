@@ -1,4 +1,18 @@
 import requests
+from .coin_cmc_id_map import SYMBOL_TO_CMC_ID
+
+
+def get_coin_image_url(symbol):
+    # Loại bỏ USDT, BUSD, USDC, TUSD, dấu '_' và dấu '-'
+    base = symbol.replace('_', '').replace('-', '')
+    for stable in ['USDT', 'BUSD', 'USDC', 'TUSD']:
+        if base.endswith(stable):
+            base = base[:-len(stable)]
+            break
+    cmc_id = SYMBOL_TO_CMC_ID.get(base)
+    if cmc_id:
+        return f"https://s2.coinmarketcap.com/static/img/coins/64x64/{cmc_id}.png"
+    return None
 
 
 def get_top_negative_funding_coins_info(n=5):
@@ -14,14 +28,17 @@ def get_top_negative_funding_coins_info(n=5):
     for item in top_n:
         symbol = item['symbol']
         trend, rates = get_funding_trend(symbol)
+        image_url = get_coin_image_url(symbol)
         result.append({
             'symbol': symbol,
+            'exchange': 'Binance',
             'fundingRate': float(item['lastFundingRate']),
             'fundingRatePercent': round(float(item['lastFundingRate']) * 100, 6),
             'markPrice': float(item['markPrice']),
             'time': item['time'],
             'fundingTrend': trend,
-            'recentRates': rates
+            'recentRates': rates,
+            'image_url': image_url
         })
     return result
 
@@ -81,14 +98,17 @@ def get_top_negative_funding_coins_info_mexc(n=5):
     for item in top_n:
         symbol = item['symbol']
         trend, rates = get_funding_trend_mexc(symbol)
+        image_url = get_coin_image_url(symbol)
         result.append({
             'symbol': symbol,
+            'exchange': 'MEXC',
             'fundingRate': float(item['fundingRate']),
             'fundingRatePercent': round(float(item['fundingRate']) * 100, 6),
             'markPrice': float(item.get('indexPrice', 0)),
             'time': item.get('timestamp', None),
             'fundingTrend': trend,
-            'recentRates': rates
+            'recentRates': rates,
+            'image_url': image_url
         })
     return result
 
@@ -118,12 +138,14 @@ async def fundingRate():
             resultFundingInBybit.append(
                 {
                     "symbol": latest["symbol"],
+                    'exchange': 'Bybit',
                     "fundingRate": float(latest["fundingRate"]),
                     'time': item.get('fundingTimestamp', None),
                     "fundingRatePercent": round(float(latest["fundingRate"]) * 100, 6),
                     "markPrice": item["markPrice"],
                     "recentRates": item["recentRates"],
                     "fundingTrend": item["fundingTrend"],
+                    "image_url": get_coin_image_url(latest["symbol"])
                 }
             )
     allSymbols = set(

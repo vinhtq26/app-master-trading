@@ -1,9 +1,30 @@
 import json
-
-from binance import Client
+import asyncio
+from binance import Client, AsyncClient
 
 client = Client("ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAHJ",
                     "JAdsfgakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27elAjda221ASA")
+
+async def fetch_klines_for_symbol(symbol, interval, limit=100):
+    async with AsyncClient("ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAHJ",
+                          "JAdsfgakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27elAjda221ASA") as async_client:
+        klines = await async_client.get_klines(symbol=symbol, interval=interval, limit=limit)
+        return symbol, klines
+
+async def analyze_long_signals_multi(symbols, interval='5m', limit=100):
+    tasks = [fetch_klines_for_symbol(symbol, interval, limit) for symbol in symbols]
+    results = await asyncio.gather(*tasks)
+    analyzed = {}
+    for symbol, klines in results:
+        # Chuyển đổi dữ liệu nến sang định dạng bạn cần, ví dụ:
+        coin_json = {"data_history": klines}  # Bạn cần chuyển đổi đúng format cho analyze_buy_signal
+        try:
+            score = analyze_buy_signal(coin_json, interval)
+        except Exception as e:
+            score = f"Error: {e}"
+        analyzed[symbol] = score
+    return analyzed
+
 def analyze_buy_signal(coin_json, interval='5m'):
     data = coin_json["data_history"][-5:]  # last 5 candles
     # Convert all needed fields to float for calculation

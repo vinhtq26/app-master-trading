@@ -1,11 +1,12 @@
 from typing import List
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Body
 import uvicorn
 from binance.client import Client
 from service import trading_signal_short, trading_signal_long
 from service.funding import fundingInfo
 from utils.DiscordUtils import send_discord_notification, DISCORD_WEBHOOK_URL_Funding
+from service.funding.coin_cmc_id_map import SYMBOL_TO_CMC_ID
 
 client = Client("ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAHJ",
                 "JAdsfgakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27elAjda221ASA")
@@ -51,7 +52,8 @@ async def trading_long_signal_position(interval: str = Query('5m', description="
                         "current_price": price_now,
                         "current_time": time_now,
                         "entry_price": entry_price,
-                        "take_profit": take_profit
+                        "take_profit": take_profit,
+                        "url_image": get_coin_image_url(symbol)
                     })
         except Exception as e:
             continue  # Skip coins with errors
@@ -100,7 +102,8 @@ async def trading_long_detail_signal_position(
                         "current_price": price_now,
                         "current_time": time_now,
                         "entry_price": entry_price,
-                        "take_profit": take_profit
+                        "take_profit": take_profit,
+                        "url_image": get_coin_image_url(symbol)
                     })
         except Exception as e:
             continue  # Skip coins with errors
@@ -224,3 +227,14 @@ async def getFunding():
     send_discord_notification(msg, DISCORD_WEBHOOK_URL_Funding)
     return funding_summary
 
+# Helper to get coin symbol and image url
+def get_coin_image_url(symbol):
+    # Remove _ and USDT suffix
+    base = symbol.replace('_', '').replace('USDT', '').replace('USD', '')
+    # Special case: if symbol starts with A_ (e.g. A_UST), remove _
+    if '_' in symbol:
+        base = symbol.split('_')[0]
+    cmc_id = SYMBOL_TO_CMC_ID.get(base)
+    if cmc_id:
+        return f"https://s2.coinmarketcap.com/static/img/coins/64x64/{cmc_id}.png"
+    return None
