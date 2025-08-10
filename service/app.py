@@ -1,8 +1,10 @@
 from typing import List
+import time
+import asyncio
 
 from fastapi import FastAPI, Query, Body
 import uvicorn
-from binance.client import Client
+from binance.client import Client, AsyncClient
 from service import trading_signal_short, trading_signal_long
 from service.funding import fundingInfo
 from utils.DiscordUtils import send_discord_notification, DISCORD_WEBHOOK_URL_Funding
@@ -12,23 +14,50 @@ client = Client("ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAH
                 "JAdsfgakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27elAjda221ASA")
 # Sửa lỗi chính tả "singal" -> "signal"
 
+async def fetch_batch_klines_optimized(symbols, interval, limit):
+    async_client = await AsyncClient.create(
+        "ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAHJ",
+        "JAdsfgakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27elAjda221ASA"
+    )
+    try:
+        tasks = [
+            async_client.get_klines(symbol=symbol, interval=interval, limit=limit)
+            for symbol in symbols
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        valid_results = {}
+        for symbol, result in zip(symbols, results):
+            if isinstance(result, Exception):
+                print(f"Error fetching data for {symbol}: {result}")
+            else:
+                valid_results[symbol] = result
+
+        return valid_results
+    finally:
+        await async_client.close_connection()
+
 async def trading_long_signal_position(interval: str = Query('5m', description="Kline interval, e.g. 1m, 5m, 15m")):
-    # Get all tickers with 24h volume
+    start_time = time.time()
+
     tickers = client.futures_ticker()
-    # Sort by quoteVolume (as float), descending
     sorted_tickers = sorted(
         tickers, key=lambda x: float(x['quoteVolume']), reverse=True
     )
-    # Get top 1000 symbols
     top_symbols = [t['symbol'] for t in sorted_tickers if t['symbol'].endswith('USDT')][:100]
 
+    klines_data = await fetch_batch_klines_optimized(top_symbols, interval, 500)
+
     results = []
-    for symbol in top_symbols:
+    for symbol, klines in klines_data.items():
         try:
-            data = trading_signal_long.get_coin_technical_data(coin_symbol=symbol, interval=interval)
+            data = trading_signal_long.process_klines(klines)
+            if not data.get("data_history"):
+                print(f"Missing data_history for {symbol}")
+                continue
+
             signal = trading_signal_long.analyze_buy_signal(data, interval=interval)
             if signal['percent'] != 60:
-                # Get last two candles
                 candles = data["data_history"]
                 if len(candles) >= 2:
                     prev_candle = candles[-2]
@@ -36,17 +65,14 @@ async def trading_long_signal_position(interval: str = Query('5m', description="
                     open_prev = float(prev_candle["open"])
                     close_prev = float(prev_candle["close"])
                     price_now = float(last_candle["close"])
-                    time_now = last_candle.get("time")  # adjust key if needed
+                    time_now = last_candle.get("time")
                     min_prev = min(open_prev, close_prev)
-                    if min_prev > price_now:
-                        entry_price = price_now * 0.99
-                    else:
-                        entry_price = (min_prev + price_now) / 2
+                    entry_price = price_now * 0.99 if min_prev > price_now else (min_prev + price_now) / 2
                     take_profit = entry_price * 1.05
 
                     results.append({
                         "symbol": symbol,
-                        "position":"Long",
+                        "position": "Long",
                         "percent": signal['percent'],
                         "details": signal,
                         "current_price": price_now,
@@ -56,13 +82,11 @@ async def trading_long_signal_position(interval: str = Query('5m', description="
                         "url_image": get_coin_image_url(symbol)
                     })
         except Exception as e:
-            continue  # Skip coins with errors
+            print(f"Error processing {symbol}: {e}")
 
     top_results = sorted(results, key=lambda x: x['percent'], reverse=True)[:50]
-    msg = "Top 5 buy signals:\n" + "\n".join(
-        [f"{i + 1}. {r['symbol']} ({r['percent']}%)" for i, r in enumerate(top_results[:5])]
-    )
-    # send_discord_notification(msg)
+
+    print(f"Execution time: {time.time() - start_time} seconds")
     return {"buy_signals": top_results}
 
 

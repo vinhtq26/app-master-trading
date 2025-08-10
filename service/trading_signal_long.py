@@ -13,8 +13,7 @@ client = Client("ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAH
 import pandas as pd
 from binance.client import Client
 
-def calculate_technical_indicators(coin_symbol='BTCUSDT', interval=Client.KLINE_INTERVAL_5MINUTE, limit=500):
-    klines = client.futures_klines(symbol=coin_symbol, interval=interval, limit=limit)
+def process_klines(klines):
     df = pd.DataFrame(klines, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume',
                                        'close_time', 'quote_asset_volume', 'number_of_trades',
                                        'taker_buy_base', 'taker_buy_quote', 'ignore'])
@@ -23,21 +22,53 @@ def calculate_technical_indicators(coin_symbol='BTCUSDT', interval=Client.KLINE_
     numeric_cols = ['open', 'high', 'low', 'close', 'volume']
     df[numeric_cols] = df[numeric_cols].astype(float)
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-    """Tính toán các chỉ báo kỹ thuật"""
-    # Tính MACD
-    # Tính MACD thủ công
+
+    # Tính toán các chỉ báo kỹ thuật
     df['EMA_10'] = df['close'].ewm(span=10, adjust=False).mean()
     df['EMA_20'] = df['close'].ewm(span=20, adjust=False).mean()
     df['EMA_50'] = df['close'].ewm(span=50, adjust=False).mean()
     df['RSI_30'] = RSIIndicator(df['close'], window=30).rsi()
     df['RSI_50'] = RSIIndicator(df['close'], window=50).rsi()
     df['RSI_70'] = RSIIndicator(df['close'], window=70).rsi()
-    # MACD (12,26,9) chuẩn Binance
+
     ema_12 = df['close'].ewm(span=12, adjust=False).mean()
     ema_26 = df['close'].ewm(span=26, adjust=False).mean()
     df['MACD_line'] = ema_12 - ema_26
     df['Signal_line'] = df['MACD_line'].ewm(span=9, adjust=False).mean()
     df['Histogram'] = df['MACD_line'] - df['Signal_line']
+
+    # Tạo data_historyß
+    data_history = []
+    for _, row in df.iterrows():
+        data_history.append({
+            "time": row['timestamp'].strftime("%Y-%m-%d %H:%M:%S"),
+            "open": row['open'],
+            "close": row['close'],
+            "high": row['high'],
+            "low": row['low'],
+            "volume": row['volume'],
+            "macd": {
+                "MACD": row['MACD_line'],
+                "Signal": row['Signal_line'],
+                "Histogram": row['Histogram']
+            },
+            "ema": {
+                "EMA_10": row['EMA_10'],
+                "EMA_20": row['EMA_20'],
+                "EMA_50": row['EMA_50']
+            },
+            "rsi": {
+                "RSI30": row['RSI_30'],
+                "RSI50": row['RSI_50'],
+                "RSI70": row['RSI_70']
+            }
+        })
+
+    return {"data_history": data_history}
+
+def calculate_technical_indicators(coin_symbol='BTCUSDT', interval=Client.KLINE_INTERVAL_5MINUTE, limit=500):
+    klines = client.futures_klines(symbol=coin_symbol, interval=interval, limit=limit)
+    df = process_klines(klines)
 
     return df
 

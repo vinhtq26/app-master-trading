@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 
+from binance import Client
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.prompts import PromptTemplate
@@ -10,20 +11,34 @@ from langchain.chains import LLMChain
 import os
 from dotenv import load_dotenv
 from pydantic import BaseModel
+import requests
 
+from cache.CacheWithTTL import PERIOD_TTL, cache
 from constant.Constant import TIME_CONSTANT
 from service.app import trading_long_signal_position, trading_short_signal_position, \
-    trading_long_detail_signal_position, trading_short_detail_signal_position
+    trading_long_detail_signal_position, trading_short_detail_signal_position, get_coin_image_url
 from service.binance import BinanceTradingSignals
 from service.funding import fundingInfo
+import aiohttp
 import uvicorn
+import asyncio
+from fastapi import Body
+import time
+
+API_LIMIT_PER_SECOND = 40   # Binance Futures limit: ~1200 requests/min
+REQUESTS_PER_SYMBOL = 2     # global + toptrader
+MAX_RETRIES = 3
+RETRY_DELAY = 3
+
+semaphore = None
 load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s"
 )
-
+client = Client("ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAHJ",
+                "JAdsfgakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27elAjda221ASA")
 app = FastAPI()
 
 app.add_middleware(
@@ -492,6 +507,158 @@ extract_time_chain = LLMChain(llm=llm, prompt=extract_time_prompt)
 async def extract_time(message: str) -> str:
     result = await extract_time_chain.arun(message=message)
     return result.strip()
+
+class BinanceLongShortRequest(BaseModel):
+    period: str = "5m"
+@app.post("/binance/long-short")
+async def get_binance_long_short_api(req: dict = Body(...)):
+    global semaphore
+    start_time = time.time()
+    total_requests = 0
+    total_retries = 0
+
+    # ====== Lấy danh sách top 400 coin USDT ======
+    tickers = client.futures_ticker()
+    sorted_tickers = sorted(
+        tickers, key=lambda x: float(x['quoteVolume']), reverse=True
+    )
+    top_symbols = [t['symbol'] for t in sorted_tickers if t['symbol'].endswith('USDT')][:400]
+    total_symbols = len(top_symbols)
+
+    # ====== Giới hạn tốc độ ======
+    max_symbols_per_second = API_LIMIT_PER_SECOND / REQUESTS_PER_SYMBOL
+    batch_size = int(max_symbols_per_second)
+    batch_delay = 1
+    semaphore = asyncio.Semaphore(batch_size)
+
+    print(f"[INFO] Batch size: {batch_size}, Delay: {batch_delay}s, Total symbols: {total_symbols}")
+
+    base_url = "https://fapi.binance.com/futures/data"
+    endpoints = {
+        "global": f"{base_url}/globalLongShortAccountRatio",
+        "toptrader": f"{base_url}/topLongShortAccountRatio"
+    }
+
+    # ====== Fetch with retry ======
+    async def fetch_with_retry(session, url, params):
+        nonlocal total_requests, total_retries
+        for attempt in range(MAX_RETRIES):
+            try:
+                async with session.get(url, params=params, timeout=10) as resp:
+                    total_requests += 1
+                    if resp.status == 429:
+                        total_retries += 1
+                        print(f"[WARN] 429 Too Many Requests → Retry {attempt+1}")
+                        await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+                        continue
+                    data = await resp.json()
+                    return data
+            except Exception as e:
+                total_retries += 1
+                print(f"[ERROR] {e} → Retry {attempt+1}")
+                await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+        return None
+
+    # ====== Fetch từng symbol ======
+    async def fetch_symbol_data(session, symbol):
+        async with semaphore:
+            results = {}
+            for key, url in endpoints.items():
+                params = {
+                    "symbol": symbol,
+                    "period": req["period"],
+                    "limit": 1
+                }
+                data = await fetch_with_retry(session, url, params)
+                if data and isinstance(data, list):
+                    latest = data[0]
+                    results[key] = {
+                        "long_pct": float(latest["longAccount"]) * 100,
+                        "short_pct": float(latest["shortAccount"]) * 100
+                    }
+            return symbol, results
+
+    # ====== Fetch tất cả symbol ======
+    async def fetch_all_symbols(symbols):
+        async with aiohttp.ClientSession() as session:
+            results = {}
+            for i in range(0, len(symbols), batch_size):
+                batch = symbols[i:i + batch_size]
+                tasks = [fetch_symbol_data(session, sym) for sym in batch]
+                batch_results = await asyncio.gather(*tasks)
+                results.update(dict(batch_results))
+                if i + batch_size < len(symbols):
+                    await asyncio.sleep(batch_delay)
+            return results
+
+    # ====== Filter + Cache ======
+    async def filter_symbols(period):
+        cache_key = f"filter_symbols_{period}"
+
+        # Lấy từ cache nếu có
+        cached_result = cache.get(cache_key)
+        if cached_result:
+            print(f"[CACHE] Dùng dữ liệu cache cho period {period}")
+            return cached_result
+
+        # Nếu không có cache → fetch từ Binance
+        fetched_data = await fetch_all_symbols(top_symbols)
+        result_long_high = []
+        result_short_high = []
+
+        for sym, ratios in fetched_data.items():
+            global_data = ratios.get("global")
+            top_data = ratios.get("toptrader")
+            if not global_data or not top_data:
+                continue
+
+            # Long cao
+            if (global_data["long_pct"] > 60 and global_data["short_pct"] < 40 and
+                    top_data["long_pct"] > 60 and top_data["short_pct"] < 40):
+                result_long_high.append({
+                    "symbol": sym,
+                    "image_url": get_coin_image_url(sym),
+                    "global": global_data,
+                    "toptrader": top_data
+                })
+
+            # Short cao
+            if (global_data["long_pct"] < 40 and global_data["short_pct"] > 60 and
+                    top_data["long_pct"] < 40 and top_data["short_pct"] > 60):
+                result_short_high.append({
+                    "symbol": sym,
+                    "image_url": get_coin_image_url(sym),
+                    "global": global_data,
+                    "toptrader": top_data
+                })
+
+        # Sắp xếp
+        result_long_high.sort(key=lambda x: x["global"]["long_pct"], reverse=True)
+        result_short_high.sort(key=lambda x: x["global"]["short_pct"], reverse=True)
+
+        final_result = (result_long_high, result_short_high)
+
+        # Lưu cache
+        cache.set(cache_key, final_result, PERIOD_TTL.get(period, 300))
+
+        return final_result
+
+    # ====== Chạy ======
+    result_long_high, result_short_high = await filter_symbols(req["period"])
+
+    elapsed_time = round(time.time() - start_time, 2)
+    print(f"[DONE] Hoàn tất sau {elapsed_time}s")
+    print(f"[STATS] Requests: {total_requests}, Retries: {total_retries}")
+
+    return {
+        "long_high": result_long_high,
+        "short_high": result_short_high,
+        "stats": {
+            "time_seconds": elapsed_time,
+            "total_requests": total_requests,
+            "total_retries": total_retries
+        }
+    }
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8080)
