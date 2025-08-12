@@ -1,10 +1,11 @@
 from typing import List
 import time
 import asyncio
+import aiohttp
 
-from fastapi import FastAPI, Query, Body
-import uvicorn
-from binance.client import Client, AsyncClient
+from fastapi import Query
+from binance.client import Client
+
 from service import trading_signal_short, trading_signal_long
 from service.funding import fundingInfo
 from utils.DiscordUtils import send_discord_notification, DISCORD_WEBHOOK_URL_Funding
@@ -13,29 +14,32 @@ from service.funding.coin_cmc_id_map import SYMBOL_TO_CMC_ID
 client = Client("ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAHJ",
                 "JAdsfgakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27elAjda221ASA")
 # Sửa lỗi chính tả "singal" -> "signal"
-
+# https://fapi.binance.com/fapi/v1/klines đầy đủ hơn https://api.binance.com/api/v3/klines?s
 async def fetch_batch_klines_optimized(symbols, interval, limit):
-    async_client = await AsyncClient.create(
-        "ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAHJ",
-        "JAdsfgakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27elAjda221ASA"
-    )
+    base_url = "https://fapi.binance.com/fapi/v1/klines"
     try:
-        tasks = [
-            async_client.get_klines(symbol=symbol, interval=interval, limit=limit)
-            for symbol in symbols
-        ]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        async with aiohttp.ClientSession() as session:
+            tasks = [
+                session.get(base_url, params={"symbol": symbol, "interval": interval, "limit": limit})
+                for symbol in symbols
+            ]
+            responses = await asyncio.gather(*tasks, return_exceptions=True)
 
-        valid_results = {}
-        for symbol, result in zip(symbols, results):
-            if isinstance(result, Exception):
-                print(f"Error fetching data for {symbol}: {result}")
-            else:
-                valid_results[symbol] = result
+            valid_results = {}
+            for symbol, response in zip(symbols, responses):
+                if isinstance(response, aiohttp.ClientResponse):
+                    async with response:
+                        if response.status == 200:
+                            valid_results[symbol] = await response.json()
+                        else:
+                            print(f"Error fetching data for {symbol}: HTTP {response.status}")
+                else:
+                    print(f"Error fetching data for {symbol}: {response}")
 
-        return valid_results
-    finally:
-        await async_client.close_connection()
+            return valid_results
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return {}
 
 async def trading_long_signal_position(interval: str = Query('5m', description="Kline interval, e.g. 1m, 5m, 15m")):
     start_time = time.time()
@@ -237,7 +241,7 @@ async def trading_short_detail_signal_position(interval: str = Query('5m', descr
     # send_discord_notification(msg)
     return {"short_signals": top_results}
 async def getFunding():
-    funding_summary = fundingInfo.fundingRate()
+    funding_summary = await fundingInfo.fundingRate()
     msg = "Funding Rates:\n"
     msg += "\nBinance:\n" + "\n".join(
         [f"{item['symbol']}: {item['fundingRatePercent']}% Price: {item['markPrice']} (Trend: {item['fundingTrend']})" for item in funding_summary['binance']]

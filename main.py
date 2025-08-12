@@ -1,7 +1,10 @@
 import asyncio
 import json
 import logging
+import threading
+import time
 
+import schedule
 from binance import Client
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,7 +26,7 @@ import aiohttp
 import uvicorn
 import asyncio
 from fastapi import Body
-import time
+from long_short_ratio_api import get_long_short_ratio, LongShortRatioRequest
 
 API_LIMIT_PER_SECOND = 40   # Binance Futures limit: ~1200 requests/min
 REQUESTS_PER_SYMBOL = 2     # global + toptrader
@@ -70,7 +73,7 @@ Bạn là một AI có nhiệm vụ phân loại câu lệnh người dùng thà
 3. **long_signal** – Dùng khi người dùng hỏi có coin nào nên mua, có tín hiệu tăng giá, hoặc cần khuyến nghị mua đơn giản.  
    ▸ Ví dụ: "Có coin nào đáng mua không?", "Cho tín hiệu long đi", "Long con nào hôm nay?", "Tín hiệu tăng hôm nay đâu?", "khung ngày tín hiệu long như nào", "tín hiệu long 15m hôm nay ra sao?", "tín hiệu long 1h hôm nay ra sao?", "tín hiệu long 4h hôm nay ra sao?", "tín hiệu long 5m hôm nay ra sao?"
 
-4. **long_detail_signal** – Dùng khi người dùng hỏi muốn **phân tích kỹ hơn** về tín hiệu long hay còn bọi là **buy** hoặc **mua** của một hay nhiều coin cụ thể (không phải hỏi chung chung).  
+4. **long_detail_signal** – Dùng khi người dùng hỏi muốn **phân t��ch kỹ hơn** về tín hiệu long hay còn bọi là **buy** hoặc **mua** của một hay nhiều coin cụ thể (không phải hỏi chung chung).  
    ▸ Ví dụ: "Phân tích giúp ETH có nên long không?", "ADA hôm nay có tín hiệu mua không?", "Giải thích giúp tín hiệu long của XRP", "Phân tích tín hiệu long của BTCUSDT trong khung 1h", "Phân tích tín hiệu long của ETHUSDT trong khung 15m", "Phân tích tín hiệu long của XRPUSDT trong khung 4h", "Phân tích tín hiệu long của ADAUSDT trong khung 5m"
 
 5. **short_signal** – Dùng khi người dùng hỏi về tín hiệu bán, short coin, hoặc cảnh báo giảm giá.  
@@ -120,18 +123,25 @@ async def root():
 async def root():
     funding_rate = await fundingInfo.fundingRate()
     all_funding = funding_rate.get("binance", []) + funding_rate.get("mexc", []) + funding_rate.get("bybit", [])
-    # Lấy danh sách symbol cần lấy giá
-    symbols = list({item["symbol"].replace('_', '').replace('-', '') for item in all_funding if float(item["fundingRatePercent"]) <= -0.5})
-    # Gọi API lấy giá nhanh từ Binance (futures)
-    import requests
-    price_map = {}
-    try:
-        resp = requests.get("https://fapi.binance.com/fapi/v1/ticker/price")
-        if resp.ok:
-            data = resp.json()
-            price_map = {item['symbol']: float(item['price']) for item in data}
-    except Exception:
-        pass
+
+    # Cache key for the price map
+    cache_key = "binance_futures_ticker_price"
+    price_map = cache.get(cache_key)
+
+    if not price_map:
+        # Gọi API lấy giá nhanh từ Binance (futures) bằng aiohttp
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get("https://fapi.binance.com/fapi/v1/ticker/price") as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        price_map = {item['symbol']: float(item['price']) for item in data}
+                        # Cache the result for 5 minutes (300 seconds)
+                        cache.set(cache_key, price_map, 300)
+        except Exception as e:
+            print(f"Error fetching prices: {e}")
+            price_map = {}
+
     filtered = []
     for item in all_funding:
         if float(item["fundingRatePercent"]) <= -0.5:
@@ -232,7 +242,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 if (signals is None or len(signals) == 0):
                     response = {
                         "type": "Other",
-                        "message": f"Hiện tại danh sách {coins} không có tín hiệu long khả dụng với khung {time_info}."
+                        "message": f"Hiện tại danh sách {coins} không có tín hi���u long khả dụng với khung {time_info}."
                     }
                     await websocket.send_json(response)
                     continue
@@ -659,6 +669,21 @@ async def get_binance_long_short_api(req: dict = Body(...)):
             "total_retries": total_retries
         }
     }
+
+def start_background_job():
+    def run_schedule():
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+
+    thread = threading.Thread(target=run_schedule, daemon=True)
+    thread.start()
+
+# Start the background job when the FastAPI app starts
+start_background_job()
+
+# Register the long-short ratio API endpoint
+app.post("/long-short-ratio")(get_long_short_ratio)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8080)
