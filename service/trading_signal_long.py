@@ -135,8 +135,26 @@ def get_coin_technical_data(coin_symbol='BTCUSDT', interval=Client.KLINE_INTERVA
     return response
 
 
+def get_long_signal(exchange, timeframe, symbol):
+    # Fetch historical market data for analysis
+    klines = client.get_klines(symbol=symbol, interval=timeframe, limit=100)
+    processed_data = process_klines(klines)
+
+    # Generate long trade signals
+    long_signal = analyze_buy_signal(processed_data, timeframe)
+
+    return {
+        "data": processed_data,
+        "signal": {
+            "percent": long_signal.get('percent', 0),
+            "reason": long_signal.get('reason', 'Không rõ lý do.')
+        }
+    }
+
+
 # Sử dụng hàm
 if __name__ == "__main__": # Khởi tạo client Binance
 
-    technical_data = get_coin_technical_data()
-    logging.info(analyze_buy_signal(technical_data))
+    klines = client.get_klines(symbol="BTCUSDT", interval="15m", limit=100)
+    processed_data = process_klines(klines)
+    logging.info(analyze_buy_signal(processed_data))

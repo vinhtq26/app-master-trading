@@ -18,6 +18,7 @@ import requests
 
 from cache.CacheWithTTL import PERIOD_TTL, cache
 from constant.Constant import TIME_CONSTANT
+from long_short_detail import long_short_detail
 from service.app import trading_long_signal_position, trading_short_signal_position, \
     trading_long_detail_signal_position, trading_short_detail_signal_position, get_coin_image_url
 from service.binance import BinanceTradingSignals
@@ -684,6 +685,7 @@ start_background_job()
 
 # Register the long-short ratio API endpoint
 app.post("/long-short-ratio")(get_long_short_ratio)
+app.post("/long_short_detail")(long_short_detail)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8080)

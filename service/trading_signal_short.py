@@ -1,8 +1,12 @@
 import pandas as pd
 import logging
-
+from binance.client import Client
 from service import trading_signal_long
+from service.binance.BinanceTradingSignals import analyze_buy_signal
+from service.trading_signal_long import process_klines
 
+client = Client("ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAHJ",
+                "JAdsfgakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27elAjda221ASA")
 
 def analyze_short_signal(data, interval):
     df = pd.DataFrame(data['data_history'])
@@ -101,7 +105,26 @@ def analyze_short_signal(data, interval):
         "reason": reason
     }
 
+def get_short_signal(exchange, timeframe, symbol):
+    # Fetch historical market data for analysis
+    klines = client.get_klines(symbol=symbol, interval="15m", limit=100)
+    processed_data = process_klines(klines)
+
+    # Generate short trade signals
+    short_signal = analyze_short_signal(processed_data, timeframe)
+
+    return {
+        "data": processed_data,
+        "signal": {
+            "ranking_short": short_signal.get('ranking_short', 0),
+            "reason": short_signal.get('reason', 'Không rõ lý do.')
+        }
+    }
+
 if __name__ == '__main__':
-    data = trading_signal_long.get_coin_technical_data(coin_symbol='BTCUSDT', interval='15m')
-    signal = analyze_short_signal(data, interval='15m')
+    klines = client.get_klines(symbol="SOLUSDT", interval="15m", limit=100)
+    processed_data = process_klines(klines)
+    signal = analyze_short_signal(processed_data, interval='15m')
+    signal_long = analyze_buy_signal(processed_data, interval='15m')
     logging.info(signal)
+    logging.info("long {}", signal_long)
