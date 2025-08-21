@@ -5,6 +5,7 @@ import pandas as pd
 from ta.momentum import RSIIndicator
 from ta.trend import EMAIndicator
 import logging
+from config.logging_config import setup_logging
 
 from service.binance.BinanceTradingSignals import analyze_buy_signal
 
@@ -12,6 +13,9 @@ client = Client("ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAH
                     "JAdsfgakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27elAjda221ASA")
 import pandas as pd
 from binance.client import Client
+
+# Initialize logging to use the centralized app_trading.log
+setup_logging()
 
 def process_klines(klines):
     df = pd.DataFrame(klines, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume',
@@ -27,16 +31,20 @@ def process_klines(klines):
     df['EMA_10'] = df['close'].ewm(span=10, adjust=False).mean()
     df['EMA_20'] = df['close'].ewm(span=20, adjust=False).mean()
     df['EMA_50'] = df['close'].ewm(span=50, adjust=False).mean()
+
+    logging.info("Calculating RSI indicators")
     df['RSI_30'] = RSIIndicator(df['close'], window=30).rsi()
     df['RSI_50'] = RSIIndicator(df['close'], window=50).rsi()
     df['RSI_70'] = RSIIndicator(df['close'], window=70).rsi()
 
+    logging.info("Calculating MACD indicators")
     ema_12 = df['close'].ewm(span=12, adjust=False).mean()
     ema_26 = df['close'].ewm(span=26, adjust=False).mean()
     df['MACD_line'] = ema_12 - ema_26
     df['Signal_line'] = df['MACD_line'].ewm(span=9, adjust=False).mean()
     df['Histogram'] = df['MACD_line'] - df['Signal_line']
 
+    logging.info("Building data history")
     # Tạo data_historyß
     data_history = []
     for _, row in df.iterrows():
@@ -64,12 +72,14 @@ def process_klines(klines):
             }
         })
 
+    logging.info("Data history built successfully")
     return {"data_history": data_history}
 
 def calculate_technical_indicators(coin_symbol='BTCUSDT', interval=Client.KLINE_INTERVAL_5MINUTE, limit=500):
+    logging.info(f"Fetching klines for {coin_symbol} with interval {interval} and limit {limit}")
     klines = client.futures_klines(symbol=coin_symbol, interval=interval, limit=limit)
     df = process_klines(klines)
-
+    logging.info("Technical indicators calculated successfully")
     return df
 
 def get_coin_technical_data(coin_symbol='BTCUSDT', interval=Client.KLINE_INTERVAL_5MINUTE, limit=500):

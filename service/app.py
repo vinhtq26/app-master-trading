@@ -3,7 +3,7 @@ import time
 import asyncio
 import aiohttp
 
-from fastapi import Query
+from fastapi import Query, Request
 from binance.client import Client
 
 from service import trading_signal_short, trading_signal_long
@@ -144,19 +144,24 @@ async def trading_long_detail_signal_position(
     return {"buy_signals": top_results}
  # Sửa lỗi chính tả "singal" -> "signal"
 async def trading_short_signal_position(interval: str = Query('5m', description="Kline interval, e.g. 1m, 5m, 15m")):
-    # Get all tickers with 24h volume
+    start_time = time.time()
+
     tickers = client.futures_ticker()
-    # Sort by quoteVolume (as float), descending
     sorted_tickers = sorted(
         tickers, key=lambda x: float(x['quoteVolume']), reverse=True
     )
-    # Get top 1000 symbols
     top_symbols = [t['symbol'] for t in sorted_tickers if t['symbol'].endswith('USDT')][:100]
 
+    klines_data = await fetch_batch_klines_optimized(top_symbols, interval, 500)
+
     results = []
-    for symbol in top_symbols:
+    for symbol, klines in klines_data.items():
         try:
-            data = trading_signal_long.get_coin_technical_data(coin_symbol=symbol, interval=interval)
+            data = trading_signal_short.process_klines(klines)
+            if not data.get("data_history"):
+                print(f"Missing data_history for {symbol}")
+                continue
+
             signal = trading_signal_short.analyze_short_signal(data, interval=interval)
             if signal['ranking_short'] != 0:
                 candles = data["data_history"]
@@ -167,12 +172,8 @@ async def trading_short_signal_position(interval: str = Query('5m', description=
                     close_prev = float(prev_candle["close"])
                     price_now = float(last_candle["close"])
                     time_now = last_candle.get("time")
-
                     max_prev = max(open_prev, close_prev)
-                    if max_prev < price_now:
-                        entry_price = price_now * 1.01
-                    else:
-                        entry_price = (max_prev + price_now) / 2
+                    entry_price = price_now * 1.01 if max_prev < price_now else (max_prev + price_now) / 2
                     take_profit = entry_price * 0.95
 
                     results.append({
@@ -183,16 +184,15 @@ async def trading_short_signal_position(interval: str = Query('5m', description=
                         "current_price": price_now,
                         "current_time": time_now,
                         "entry_price": entry_price,
-                        "take_profit": take_profit
+                        "take_profit": take_profit,
+                        "url_image": get_coin_image_url(symbol)
                     })
         except Exception as e:
-            continue  # Skip coins with errors
+            print(f"Error processing {symbol}: {e}")
 
     top_results = sorted(results, key=lambda x: x['percent'], reverse=True)[:50]
-    # msg = "Top 5 buy signals:\n" + "\n".join(
-    #     [f"{i + 1}. {r['symbol']} ({r['percent']}%)" for i, r in enumerate(top_results[:5])]
-    # )
-    # send_discord_notification(msg)
+
+    print(f"Execution time: {time.time() - start_time} seconds")
     return {"short_signals": top_results}
 async def trading_short_detail_signal_position(interval: str = Query('5m', description="Kline interval, e.g. 1m, 5m, 15m"), symbols: List[str] = Query(None, description="List of symbols to filter, e.g. BTCUSDT, ETHUSDT")):
 
@@ -266,3 +266,4 @@ def get_coin_image_url(symbol):
     if cmc_id:
         return f"https://s2.coinmarketcap.com/static/img/coins/64x64/{cmc_id}.png"
     return None
+

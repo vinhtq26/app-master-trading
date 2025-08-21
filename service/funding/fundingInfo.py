@@ -96,7 +96,7 @@ def get_top_negative_funding_coins_info_mexc(n=5):
     top_n = sorted_data[:n]
     result = []
     for item in top_n:
-        symbol = item['symbol']
+        symbol = item['symbol'].replace('_', '').replace('-', '')
         trend, rates = get_funding_trend_mexc(symbol)
         image_url = get_coin_image_url(symbol)
         result.append({
@@ -145,11 +145,11 @@ async def fundingRate():
                     "markPrice": item["markPrice"],
                     "recentRates": item["recentRates"],
                     "fundingTrend": item["fundingTrend"],
-                    "image_url": get_coin_image_url(latest["symbol"])
+                    "image_url": get_coin_image_url(latest["symbol"].replace('_', ''))
                 }
             )
     allSymbols = set(
-        item['symbol'] for item in resultFundingInBinance + resultFundingInMexc + resultFundingInBybit
+        item['symbol'].replace('_', '') for item in resultFundingInBinance + resultFundingInMexc + resultFundingInBybit
     )
     # Trả về kết quả funding rate từ 3 sàn
     return {
