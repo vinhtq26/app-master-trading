@@ -1,15 +1,17 @@
 import json
 from datetime import datetime
-
-import service.trading_signal_long as long_signal
-import service.binance.BinanceTradingSignals as binance_signals
 import service.trading_signal_short as short_signal
-from model.long_ai import analyze_candle_patterns, analyze_support_resistance, analyze_volume
+from model.long_ai_binance import analyze_candle_patterns, analyze_support_resistance, analyze_volume
 from model.Gemini import Gemini
-def get_long_short_detail(exchange, timeframe, symbol):
+from service import trading_signal_long
+from service.mexc import trading_signal_long_mexc
+from service.mexc.trading_signal_short_mexc import analyze_short_signal
+
+
+def get_long_short_detail_llm_mexc(exchange, timeframe, symbol):
     # Lấy dữ liệu từ các module long/short
-    long_data = long_signal.get_long_signal(exchange, timeframe, symbol)
-    short_data = short_signal.get_short_signal(exchange, timeframe, symbol)
+    long_data = get_long_signal_detail_mexc(exchange, timeframe, symbol)
+    short_data = get_short_signal_detail_mexc(exchange, timeframe, symbol)
 
     # Phân tích thêm
     support_resistance = analyze_support_resistance(exchange, timeframe, symbol)
@@ -44,7 +46,7 @@ def get_long_short_detail(exchange, timeframe, symbol):
     else:
         analysis.append("Không phát hiện mô hình nến đảo chiều đặc biệt.")
 
-    # Tổng hợp dữ liệu kỹ thuật dạng dict để truyền vào prompt
+    # Tổng hợp dữ liệu kỹ thuật dạng dict để truyền vào prompts
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # Lấy giá hiện tại từ dữ liệu long_data (ưu tiên), nếu không có thì để None
     current_price = None
@@ -121,3 +123,34 @@ Dữ liệu kỹ thuật:
     elif llm_result.strip().startswith("```"):
         llm_result = re.sub(r"^```\s*|\s*```$", "", llm_result.strip())
     return json.loads(llm_result)
+
+
+
+def get_long_signal_detail_mexc(exchange, timeframe, symbol):
+    # Fetch historical market data for analysis
+    data = trading_signal_long_mexc.get_coin_technical_data(coin_symbol=symbol, interval=timeframe)
+    long_signal = trading_signal_long.analyze_buy_signal(data, interval=timeframe)
+
+    return {
+        "data": data,
+        "signal": {
+            "percent": long_signal.get('percent', 0),
+            "reason": long_signal.get('reason', 'Không rõ lý do.')
+        }
+    }
+
+
+def get_short_signal_detail_mexc(exchange, timeframe, symbol):
+    # Fetch historical market data for analysis
+    data = trading_signal_long_mexc.get_coin_technical_data(coin_symbol=symbol, interval=timeframe)
+
+    # Generate short trade signals
+    short_signal = analyze_short_signal(data, timeframe)
+
+    return {
+        "data": data,
+        "signal": {
+            "ranking_short": short_signal.get('ranking_short', 0),
+            "reason": short_signal.get('reason', 'Không rõ lý do.')
+        }
+    }

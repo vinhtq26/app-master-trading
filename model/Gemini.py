@@ -1,24 +1,23 @@
-import os
 import google.generativeai as genai
 
-from model.long_ai import trading_long_signal_ai_position
+from model.long_ai_binance import trading_long_signal_ai_position
+from prompts import PromptAI
 
-gemini_key = os.getenv("GEMINI_API_KEY")
-gemini_model = "gemini-2.0-flash"
-
+gemini_key = "AIzaSyBG0nBHA-OTGaherKu9bFCIr3_PDIoGBiY"
+gemini_model = "gemini-2.0-flash"  # Hoặc "gemini-1.
 genai.configure(api_key=gemini_key)
 
-model = genai.GenerativeModel(gemini_model)  # Hoặc "gemini-1.5-flash"
-
-
+model = genai.GenerativeModel(gemini_model)
 class Gemini:
     @staticmethod
-    def analyze(prompt_text: str) -> str:
-        """
-        Gửi prompt đến mô hình Gemini và nhận kết quả phân tích.
-        """
-        try:
-            response = model.generate(prompt=prompt_text, temperature=0.3)
-            return response["text"]  # Trả về kết quả dạng text
-        except Exception as e:
-            return f"Error: {str(e)}"
+    def analyze(data):
+        # Tạo prompt từ dữ liệu đầu vào
+        prompt_text = PromptAI.prompt_long_15m.replace("{content}", str(data))
+        # Gọi Gemini API
+        import google.generativeai as genai
+        gemini_key = "AIzaSyBG0nBHA-OTGaherKu9bFCIr3_PDIoGBiY"
+        gemini_model = "gemini-2.0-flash"
+        genai.configure(api_key=gemini_key)
+        model = genai.GenerativeModel(gemini_model)
+        response = model.generate_content(prompt_text)
+        return response.text

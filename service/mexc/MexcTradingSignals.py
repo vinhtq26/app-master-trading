@@ -1,11 +1,6 @@
 import requests
 import pandas as pd
 from ta.momentum import RSIIndicator
-import asyncio
-import aiohttp
-
-from service import trading_signal_long
-from service.utils.utils import get_coin_image_url
 
 
 class MexcTradingSignals:

@@ -26,7 +26,7 @@ def get_coin_technical_data(coin_symbol='BTCUSDT', interval='5m', limit=500):
     """
     Lấy thông tin kỹ thuật của coin bao gồm MACD và EMA
 
-    Parameters:
+    Parameters: 
         coin_symbol (str): Mã cặp giao dịch (mặc định BTCUSDT)
         interval (str): Khung thời gian (mặc định 5 phút)
         limit (int): Số lượng nến trả về (mặc định 500)

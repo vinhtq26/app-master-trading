@@ -1,8 +1,7 @@
 from fastapi import Query
-from service.trading_signal_long import get_coin_technical_data
-from service.trading_signal_long import analyze_buy_signal
 from binance.client import Client
 
+from service.mexc.trading_signal_long_mexc import get_coin_technical_data
 from service.trading_signal_short import analyze_short_signal
 
 client = Client("ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAHJ",
@@ -28,7 +27,7 @@ def trading_long_signal_ai_position(interval: str = Query('5m', description="Kli
 
     return data
 
-def analyze_candle_patterns(exchange, timeframe, symbol):
+def analyze_candle_patterns_mexc(exchange, timeframe, symbol):
     """
     Phân tích mô hình nến nâng cao từ dữ liệu lịch sử giá.
     """
@@ -54,7 +53,7 @@ def analyze_candle_patterns(exchange, timeframe, symbol):
 
     return patterns
 
-def analyze_support_resistance(exchange, timeframe, symbol):
+def analyze_support_resistance_mexc(exchange, timeframe, symbol):
     """
     Phân tích các vùng kháng cự/hỗ trợ mạnh dựa trên swing high/low, volume và đa khung thời gian.
     """
@@ -90,7 +89,7 @@ def analyze_support_resistance(exchange, timeframe, symbol):
         "resistance_zones": resistance_zones
     }
 
-def analyze_volume(exchange, timeframe, symbol):
+def analyze_volume_mexc(exchange, timeframe, symbol):
     """
     Phân tích volume breakout, phân kỳ, volume tăng đột biến.
     """
@@ -114,13 +113,13 @@ def analyze_volume(exchange, timeframe, symbol):
         "breakout": breakout
     }
 
-def analyze_trade_suggestion(exchange, timeframe, symbol):
+def analyze_trade_suggestion_mexc(exchange, timeframe, symbol):
     """
     Đưa ra gợi ý vào lệnh, stoploss, takeprofit, cảnh báo rủi ro dựa trên phân tích kỹ thuật tổng hợp.
     """
-    candle_patterns = analyze_candle_patterns(exchange, timeframe, symbol)
-    sr = analyze_support_resistance(exchange, timeframe, symbol)
-    vol = analyze_volume(exchange, timeframe, symbol)
+    candle_patterns = analyze_candle_patterns_mexc(exchange, timeframe, symbol)
+    sr = analyze_support_resistance_mexc(exchange, timeframe, symbol)
+    vol = analyze_volume_mexc(exchange, timeframe, symbol)
     # Xác định điểm vào lệnh: Nếu có mô hình nến đảo chiều gần vùng hỗ trợ/kháng cự và volume breakout
     entry = None
     stoploss = None
@@ -152,29 +151,4 @@ def analyze_trade_suggestion(exchange, timeframe, symbol):
         'candle_patterns': candle_patterns,
         'support_resistance': sr,
         'volume': vol
-    }
-
-
-def get_long_signal(exchange, timeframe, symbol, limit=150):
-    """
-    Lấy tín hiệu long cho một symbol cụ thể với số lượng nến tuỳ chọn (mặc định 150 cho phân tích sâu).
-    """
-    data = get_coin_technical_data(coin_symbol=symbol, interval=timeframe, limit=limit)
-    signal = analyze_buy_signal(data, interval=timeframe)
-    return {
-        "symbol": symbol,
-        "signal": signal,
-        "data": data
-    }
-
-def get_short_signal(exchange, timeframe, symbol, limit=150):
-    """
-    Lấy tín hiệu short cho một symbol cụ thể với số lượng nến tuỳ chọn (mặc định 150 cho phân tích sâu).
-    """
-    data = get_coin_technical_data(coin_symbol=symbol, interval=timeframe, limit=limit)
-    signal = analyze_short_signal(data, interval=timeframe)
-    return {
-        "symbol": symbol,
-        "signal": signal,
-        "data": data
     }

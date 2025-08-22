@@ -101,7 +101,3 @@ def analyze_short_signal(data, interval):
         "reason": reason
     }
 
-if __name__ == '__main__':
-    data = trading_signal_long.get_coin_technical_data(coin_symbol='BTCUSDT', interval='15m')
-    signal = analyze_short_signal(data, interval='15m')
-    logging.info(signal)
