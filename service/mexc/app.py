@@ -15,6 +15,7 @@ from service.mexc import trading_signal_long_mexc, trading_signal_short_mexc
 from utils.DiscordUtils import send_discord_notification, DISCORD_WEBHOOK_URL_Funding
 from service.mexc.MexcTradingSignals import MexcTradingSignals
 from cache.CacheWithTTL import cache, PERIOD_TTL
+from utils.utils import get_coin_image_url
 
 executor = ThreadPoolExecutor(max_workers=10)
 client = Client("ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAHJ",
@@ -50,7 +51,7 @@ async def process_symbol(symbol, interval):
         data = await loop.run_in_executor(executor, get_coin_technical_data_fast, symbol, interval)
         signal = await loop.run_in_executor(executor, trading_signal_long_mexc.analyze_buy_signal, data, interval)
 
-        if signal['percent'] != 60:
+        if signal['percent'] > 60:
             candles = data["data_history"]
             if len(candles) >= 2:
                 prev_candle = candles[-2]
@@ -72,9 +73,12 @@ async def process_symbol(symbol, interval):
                     "symbol": symbol,
                     "entry_price": entry_price,
                     "take_profit": take_profit,
-                    "time": time_now,
+                    "current_time": time_now,
                     "signal": signal,
-                    "current_price": price_now
+                    "current_price": price_now,
+                    "url_image": get_coin_image_url(symbol),
+                    "percent": signal['percent'],
+                    "position": "Long"
                 }
     except Exception as e:
         print(f"Error processing {symbol}: {e}")

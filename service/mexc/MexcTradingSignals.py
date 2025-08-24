@@ -55,6 +55,6 @@ class MexcTradingSignals:
         sorted_tickers = sorted(
             tickers, key=lambda x: float(x.get('amount24', 0)), reverse=True
         )
-        # Get top symbols ending with 'USDT'
-        top_symbols = [t['symbol'].replace('_', '') for t in sorted_tickers if t['symbol'].endswith('USDT')][:limit]
+        # Get top symbols ending with 'USDT' error TONCOIN
+        top_symbols = [t['symbol'].replace('_', '').replace("COIN","") for t in sorted_tickers if t['symbol'].endswith('USDT')][:limit]
         return top_symbols

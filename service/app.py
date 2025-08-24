@@ -61,7 +61,7 @@ async def trading_long_signal_position(interval: str = Query('5m', description="
                 continue
 
             signal = trading_signal_long.analyze_buy_signal(data, interval=interval)
-            if signal['percent'] != 60:
+            if signal['percent'] > 60:
                 candles = data["data_history"]
                 if len(candles) >= 2:
                     prev_candle = candles[-2]

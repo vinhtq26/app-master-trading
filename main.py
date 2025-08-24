@@ -39,9 +39,9 @@ app.add_middleware(
 )
 
 # Đảm bảo các router được đăng ký chính xác
-app.include_router(funding_router)
-app.include_router(long_short_ratio_router)
-app.include_router(binance_long_short_router)
+app.include_router(funding_router) # đã test
+app.include_router(long_short_ratio_router) # đã test chi tiết long short một coin
+app.include_router(binance_long_short_router)  # đã test danh sách tỉ lệ long short cao
 app.include_router(signal_router)
 app.include_router(long_short_detail_router)
 app.include_router(long_short_detail_llm_router)

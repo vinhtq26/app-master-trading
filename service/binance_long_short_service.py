@@ -63,6 +63,8 @@ async def fetch_all_symbols(symbols, endpoints, period, batch_size, batch_delay)
 async def filter_symbols(period, top_symbols, endpoints):
     cache_key = f"filter_symbols_{period}"
 
+    logging.info(f"[FILTER_SYMBOLS] Period: {period}, Endpoints: {endpoints}")
+
     # Lấy từ cache nếu có
     cached_result = cache.get(cache_key)
     if cached_result:

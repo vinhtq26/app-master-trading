@@ -34,7 +34,7 @@ async def get_funding():
     filtered = []
     logging.info("Filtering funding rates with criteria")
     for item in all_funding:
-        if float(item["fundingRatePercent"]) <= -0.5:
+        if float(item["fundingRatePercent"]) <= -0.2:
             # Normalize symbol to fetch price
             symbol_norm = item["symbol"].replace('_', '').replace('-', '')
             price = price_map.get(symbol_norm)

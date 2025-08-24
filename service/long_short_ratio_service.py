@@ -49,33 +49,38 @@ async def fetch_long_short_ratio(exchange: str, timeframe: str, symbol: str, cat
         timeframe = timeframe.replace("m", "min")  # Convert '15m' to '15min' for Bybit
         params["period"] = timeframe
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params) as response:
-            if response.status == 200:
-                data = await response.json()
+    if exchange.lower() == "binance":
+        async with aiohttp.ClientSession() as session:
+            # Fetch data from global long-short ratio endpoint
+            async with session.get(BINANCE_ENDPOINTS["global_long_short"], params=params) as global_response:
+                if global_response.status == 200:
+                    global_data = await global_response.json()
+                else:
+                    return {"error": f"Failed to fetch global long-short data. HTTP status: {global_response.status}"}
 
-                # Normalize output for Bybit
-                if exchange.lower() == "bybit":
-                    if data.get("retCode") == 0 and "list" in data.get("result", {}):
-                        result = data["result"]["list"][0]
-                        return {
-                            "symbol": result["symbol"],
-                            "longRatio": result["buyRatio"],
-                            "shortRatio": result["sellRatio"],
-                            "timestamp": result["timestamp"]
-                        }
+            # Fetch data from top trader long-short ratio endpoint
+            async with session.get(BINANCE_ENDPOINTS["top_trader"], params=params) as top_trader_response:
+                if top_trader_response.status == 200:
+                    top_trader_data = await top_trader_response.json()
+                else:
+                    return {"error": f"Failed to fetch top trader long-short data. HTTP status: {top_trader_response.status}"}
 
-                # Normalize output for Binance
-                elif exchange.lower() == "binance":
-                    if isinstance(data, list) and len(data) > 0:
-                        result = data[0]
-                        return {
-                            "symbol": result["symbol"],
-                            "longRatio": result["longAccount"],
-                            "shortRatio": result["shortAccount"],
-                            "timestamp": result["timestamp"]
-                        }
-
-                return {"error": "Unexpected response format from exchange."}
+            # Merge data from both endpoints
+            if isinstance(global_data, list) and len(global_data) > 0:
+                global_result = global_data[0]
             else:
-                return {"error": f"Failed to fetch data from {exchange}. Status code: {response.status}"}
+                return {"error": "Unexpected response format from global long-short endpoint."}
+
+            if isinstance(top_trader_data, list) and len(top_trader_data) > 0:
+                top_trader_result = top_trader_data[0]
+            else:
+                return {"error": "Unexpected response format from top trader endpoint."}
+
+            return {
+                "symbol": global_result["symbol"],
+                "long_ratio": float(global_result["longAccount"]) * 100,
+                "short_ratio": float(global_result["shortAccount"]) * 100,
+                "toptrader_long_ratio": float(top_trader_result["longAccount"]) * 100,
+                "toptrader_short_ratio": float(top_trader_result["shortAccount"]) * 100,
+                "timestamp": global_result["timestamp"]
+            }
