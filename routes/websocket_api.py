@@ -1,20 +1,20 @@
+import asyncio
 import json
+import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from langchain.chains.llm import LLMChain
 
 from constant.Constant import TIME_CONSTANT
-import asyncio
-import logging
-
 from llm.llm_config import llm
-from service.app import trading_long_signal_position, trading_short_detail_signal_position, trading_long_detail_signal_position, trading_short_signal_position
+from prompts.PromptAI import summarize_prompt
+from service.app import trading_long_signal_position, trading_short_detail_signal_position, \
+    trading_long_detail_signal_position, trading_short_signal_position
 from service.binance import BinanceTradingSignals
 from service.funding import fundingInfo
-from utils.intent_utils import classify_intent
 from utils.extract_coin_utils import extractCoin
 from utils.extract_time_utils import extract_time
-from prompts.PromptAI import summarize_prompt
+from utils.intent_utils import classify_intent
 
 websocket_router = APIRouter()
 

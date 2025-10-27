@@ -1,6 +1,5 @@
 import google.generativeai as genai
 
-from model.long_ai_binance import trading_long_signal_ai_position
 from prompts import PromptAI
 
 gemini_key = "AIzaSyBG0nBHA-OTGaherKu9bFCIr3_PDIoGBiY"

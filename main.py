@@ -1,26 +1,15 @@
-import json
-import logging
-import threading
-import time
-
-import schedule
-from binance import Client
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-from langchain_core.prompts import PromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.chains import LLMChain
-import os
-from dotenv import load_dotenv
-from pydantic import BaseModel
-
 import uvicorn
-from routes.funding_api import router as funding_router
+from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from langchain.chains import LLMChain
+
 from routes.binance_long_short_api import router as binance_long_short_router
-from routes.long_short_ratio_api import router as long_short_ratio_router
-from routes.signal_api import router as signal_router
+from routes.funding_api import router as funding_router
 from routes.long_short_detail import router as long_short_detail_router
 from routes.long_short_detail_llm import router as long_short_detail_llm_router
+from routes.long_short_ratio_api import router as long_short_ratio_router
+from routes.signal_api import router as signal_router
 
 API_LIMIT_PER_SECOND = 40   # Binance Futures limit: ~1200 requests/min
 REQUESTS_PER_SYMBOL = 2     # global + toptrader

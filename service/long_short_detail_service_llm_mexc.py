@@ -1,8 +1,8 @@
 import json
 from datetime import datetime
-import service.trading_signal_short as short_signal
-from model.long_ai_binance import analyze_candle_patterns, analyze_support_resistance, analyze_volume
+
 from model.Gemini import Gemini
+from model.long_ai_binance import analyze_candle_patterns, analyze_support_resistance, analyze_volume
 from service import trading_signal_long
 from service.mexc import trading_signal_long_mexc
 from service.mexc.trading_signal_short_mexc import analyze_short_signal

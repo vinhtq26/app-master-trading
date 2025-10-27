@@ -1,8 +1,7 @@
-from fastapi import Query
 from binance.client import Client
+from fastapi import Query
 
 from service.mexc.trading_signal_long_mexc import get_coin_technical_data
-from service.trading_signal_short import analyze_short_signal
 
 client = Client("ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAHJ",
                 "JAdsfgakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27elAjda221ASA")

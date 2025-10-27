@@ -1,9 +1,11 @@
-import aiohttp
-from fastapi import FastAPI, APIRouter
-from pydantic import BaseModel
+from fastapi import APIRouter
 import logging
+
+from fastapi import APIRouter
+from pydantic import BaseModel
+
 from service.long_short_ratio_service import fetch_long_short_ratio
-import json
+
 router = APIRouter()
 
 class LongShortRatioRequest(BaseModel):

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Body
 from pydantic import BaseModel
+
 from service.app import trading_long_signal_position, trading_short_signal_position
-from service.mexc.MexcTradingSignals import MexcTradingSignals
 from service.mexc.app import trading_long_signal_position_mexc, trading_short_signal_position_mexc
 
 router = APIRouter()

@@ -1,8 +1,11 @@
-from fastapi import APIRouter
-import aiohttp
-from service.funding import fundingInfo
-from cache.CacheWithTTL import cache
 import logging
+
+import aiohttp
+from fastapi import APIRouter
+
+from cache.CacheWithTTL import cache
+from service.funding import fundingInfo
+
 router = APIRouter()
 
 @router.get("/funding")

@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Body
-from service.binance_long_short_service import get_binance_long_short
-from binance import Client
 import os
+
+from binance import Client
 from dotenv import load_dotenv
+from fastapi import APIRouter, Body
+
+from service.binance_long_short_service import get_binance_long_short
 
 load_dotenv()
 

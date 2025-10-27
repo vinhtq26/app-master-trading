@@ -26872,3 +26872,31 @@ KeyboardInterrupt
 2025-08-24 14:40:29,787 - INFO - [MainThread] [RequestID: N/A] - Fetching price map from cache
 2025-08-24 14:40:29,787 - INFO - [MainThread] [RequestID: N/A] - Filtering funding rates with criteria
 2025-08-24 14:40:29,788 - INFO - [MainThread] [RequestID: N/A] - Filtered funding rates: [{'symbol': 'PROMPTUSDT', 'fundingRatePercent': -0.823261, 'exchange': 'Binance', 'image_url': 'https://s2.coinmarketcap.com/static/img/coins/64x64/36223.png', 'price': 0.3213}, {'symbol': 'ASRUSDT', 'fundingRatePercent': -0.467157, 'exchange': 'Binance', 'image_url': 'https://s2.coinmarketcap.com/static/img/coins/64x64/5229.png', 'price': 3.21}, {'symbol': 'HAEDALUSDT', 'fundingRatePercent': -0.256888, 'exchange': 'Binance', 'image_url': 'https://s2.coinmarketcap.com/static/img/coins/64x64/36369.png', 'price': 0.156611}, {'symbol': 'MUSDT', 'fundingRatePercent': -0.22723, 'exchange': 'Binance', 'image_url': 'https://s2.coinmarketcap.com/static/img/coins/64x64/35491.png', 'price': 0.4296}, {'symbol': 'PROMPTUSDT', 'fundingRatePercent': -0.8383, 'exchange': 'MEXC', 'image_url': 'https://s2.coinmarketcap.com/static/img/coins/64x64/36223.png', 'price': 0.3213}, {'symbol': 'ARIAUSDT', 'fundingRatePercent': -0.5032, 'exchange': 'MEXC', 'image_url': None, 'price': None}, {'symbol': 'AKEUSDT', 'fundingRatePercent': -0.5023, 'exchange': 'MEXC', 'image_url': None, 'price': None}, {'symbol': 'ASRUSDT', 'fundingRatePercent': -0.4676, 'exchange': 'MEXC', 'image_url': 'https://s2.coinmarketcap.com/static/img/coins/64x64/5229.png', 'price': 3.21}, {'symbol': 'HAEDALUSDT', 'fundingRatePercent': -0.2604, 'exchange': 'MEXC', 'image_url': 'https://s2.coinmarketcap.com/static/img/coins/64x64/36369.png', 'price': 0.156611}, {'symbol': 'PROMPTUSDT', 'fundingRatePercent': -0.505459, 'exchange': 'Bybit', 'image_url': 'https://s2.coinmarketcap.com/static/img/coins/64x64/36223.png', 'price': 0.3213}, {'symbol': 'ASRUSDT', 'fundingRatePercent': -0.336946, 'exchange': 'Bybit', 'image_url': 'https://s2.coinmarketcap.com/static/img/coins/64x64/5229.png', 'price': 3.21}, {'symbol': 'PROMPTUSDT', 'fundingRatePercent': -0.505459, 'exchange': 'Bybit', 'image_url': 'https://s2.coinmarketcap.com/static/img/coins/64x64/36223.png', 'price': 0.3213}, {'symbol': 'ASRUSDT', 'fundingRatePercent': -0.336946, 'exchange': 'Bybit', 'image_url': 'https://s2.coinmarketcap.com/static/img/coins/64x64/5229.png', 'price': 3.21}]
+2025-10-27 23:38:16,217 - ERROR - [MainThread] [RequestID: N/A] - Task exception was never retrieved
+future: <Task finished name='Task-1' coro=<Server.serve() done, defined at /Users/quangvinh/Library/Python/3.9/lib/python/site-packages/uvicorn/server.py:68> exception=KeyboardInterrupt()>
+Traceback (most recent call last):
+  File "/Users/quangvinh/Library/Python/3.9/lib/python/site-packages/uvicorn/main.py", line 580, in run
+    server.run()
+  File "/Users/quangvinh/Library/Python/3.9/lib/python/site-packages/uvicorn/server.py", line 66, in run
+    return asyncio.run(self.serve(sockets=sockets))
+  File "/Applications/PyCharm.app/Contents/plugins/python/helpers-pro/pydevd_asyncio/pydevd_nest_asyncio.py", line 138, in run
+    return loop.run_until_complete(task)
+  File "/Applications/PyCharm.app/Contents/plugins/python/helpers-pro/pydevd_asyncio/pydevd_nest_asyncio.py", line 234, in run_until_complete
+    self._run_once()
+  File "/Applications/PyCharm.app/Contents/plugins/python/helpers-pro/pydevd_asyncio/pydevd_nest_asyncio.py", line 286, in _run_once
+    handle._run()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/tasks.py", line 339, in __wakeup
+    self.__step()
+  File "/Applications/PyCharm.app/Contents/plugins/python/helpers-pro/pydevd_asyncio/pydevd_nest_asyncio.py", line 394, in step
+    step_orig(task, exc)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/tasks.py", line 256, in __step
+    result = coro.send(None)
+  File "/Users/quangvinh/Library/Python/3.9/lib/python/site-packages/uvicorn/server.py", line 70, in serve
+    await self._serve(sockets)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/contextlib.py", line 124, in __exit__
+    next(self.gen)
+  File "/Users/quangvinh/Library/Python/3.9/lib/python/site-packages/uvicorn/server.py", line 330, in capture_signals
+    signal.raise_signal(captured_signal)
+KeyboardInterrupt

@@ -1,9 +1,11 @@
-import time
 import asyncio
 import logging
+import time
+
+import aiohttp
+
 from cache.CacheWithTTL import PERIOD_TTL, cache
 from service.app import get_coin_image_url
-import aiohttp
 
 API_LIMIT_PER_SECOND = 40
 REQUESTS_PER_SYMBOL = 2

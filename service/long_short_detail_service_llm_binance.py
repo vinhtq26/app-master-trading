@@ -2,10 +2,11 @@ import json
 from datetime import datetime
 
 import service.trading_signal_long as long_signal
-import service.binance.BinanceTradingSignals as binance_signals
 import service.trading_signal_short as short_signal
-from model.long_ai_binance import analyze_candle_patterns, analyze_support_resistance, analyze_volume
 from model.Gemini import Gemini
+from model.long_ai_binance import analyze_candle_patterns, analyze_support_resistance, analyze_volume
+
+
 def get_long_short_detail_llm_binance(exchange, timeframe, symbol):
     # Lấy dữ liệu từ các module long/short
     long_data = long_signal.get_long_signal(exchange, timeframe, symbol)

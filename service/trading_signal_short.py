@@ -1,7 +1,8 @@
-import pandas as pd
 import logging
+
+import pandas as pd
 from binance.client import Client
-from service import trading_signal_long
+
 from service.binance.BinanceTradingSignals import analyze_buy_signal
 from service.trading_signal_long import process_klines
 

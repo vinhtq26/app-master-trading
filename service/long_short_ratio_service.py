@@ -1,8 +1,11 @@
-import aiohttp
 import logging
+
+import aiohttp
+
 from config.binance_config import ENDPOINTS as BINANCE_ENDPOINTS
-from config.mexc_config import ENDPOINTS as MEXC_ENDPOINTS
 from config.bybit_config import ENDPOINTS as BYBIT_ENDPOINTS
+from config.mexc_config import ENDPOINTS as MEXC_ENDPOINTS
+
 """
 bybit
 {

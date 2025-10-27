@@ -1,8 +1,10 @@
 import logging
+import uuid
+
 import colorlog
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-import uuid
+
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):

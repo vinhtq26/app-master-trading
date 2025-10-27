@@ -1,9 +1,7 @@
 from fastapi import APIRouter, Request
 
-from service.app import trading_long_detail_signal_position, trading_short_detail_signal_position
 from service.long_short_detail_service_llm_binance import get_long_short_detail_llm_binance
 from service.long_short_detail_service_llm_mexc import get_long_short_detail_llm_mexc
-from service.mexc.app import trading_long_detail_signal_position_mexc, trading_short_detail_signal_position_mexc
 
 router = APIRouter()
 

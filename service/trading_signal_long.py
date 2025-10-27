@@ -1,12 +1,11 @@
-from datetime import datetime, timezone
+import logging
+from datetime import datetime
+
 import pytz
 from binance.client import Client
-import pandas as pd
 from ta.momentum import RSIIndicator
-from ta.trend import EMAIndicator
-import logging
-from config.logging_config import setup_logging
 
+from config.logging_config import setup_logging
 from service.binance.BinanceTradingSignals import analyze_buy_signal
 
 client = Client("ASdfASakKdajNsjdf82JCL8IocUd9hdmmfnSJHAN89dHfnasNN27Ajasd245FAHJ",
