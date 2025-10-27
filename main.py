@@ -2,7 +2,6 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from langchain import LLMChain
 
 from routes.binance_long_short_api import router as binance_long_short_router
 from routes.funding_api import router as funding_router
